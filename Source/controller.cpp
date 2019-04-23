@@ -21,6 +21,8 @@ Controller::Controller()
 
 QThread* Controller::start()
 {
+    //Load the list of posts that are already saved locally
+    localInterface->loadSavedList();
 
     //Create new thread and move the redditInterface object to that thread
     QThread* t1 = new QThread();
@@ -45,12 +47,9 @@ QThread* Controller::start()
 void Controller::compareLists()
 {
 
-    //Load the list of posts that are already saved locally
-    localInterface->loadSavedList();
-
     //Get handles on both the new saved list from reddit and the list of what is already saved locally
     QList<SavedEntry*> redditSavedList = redditInterface->savedList;
-    QList<SavedEntry*> localSavedList = localInterface->localSavedList;
+    QList<SavedEntry*> localSavedList = localInterface->savedList;
 
     QString localSavedListPath = rootDir.path() + "/media/localSavedList.txt";
 

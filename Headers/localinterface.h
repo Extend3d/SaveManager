@@ -15,7 +15,9 @@ public:
     LocalInterface(QDir rootDir);
 
     void loadSavedList();
-    QList<SavedEntry*> localSavedList;
+    QString locateFile(QString);
+
+    QList<SavedEntry*> savedList;
 
 private:
 

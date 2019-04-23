@@ -78,6 +78,9 @@
         </item>
        </layout>
       </item>
+      <item>
+       <widget class="QWidget" name="mediaContainer" native="true"/>
+      </item>
      </layout>
     </item>
    </layout>

@@ -25,16 +25,24 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+
     QWidget* createDelegate(QString, QString, QString, QString);
 
     Controller* contr;
     QThread* updateThread;
 
+    QLabel* imageHolder;
+
+    LocalInterface* localInterface;
+
+    QList<QWidget*> delegateList;
+
 private slots:
 
     void onButtonClicked();
-    void populateScrollArea();
     void on_actionBackup_Locally_triggered();
+    void populateScrollArea();
+    void searchScrollArea();
 
 private:
 

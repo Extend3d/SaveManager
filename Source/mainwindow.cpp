@@ -2,6 +2,8 @@
 #include "ui_mainwindow.h"
 
 
+
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -9,9 +11,25 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
 
     this->contr = new Controller();
+    this->localInterface = contr->localInterface;
+    connect(localInterface, &LocalInterface::localSavedListReady, this, &MainWindow::populateScrollArea);
     this->updateThread = nullptr;
 
+    connect(ui->lineEdit, &QLineEdit::returnPressed, this, &MainWindow::searchScrollArea);
 
+    QStackedLayout* stack = new QStackedLayout();
+    QSizePolicy policy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    QWidget* mediaContainer = new QWidget();
+    mediaContainer->setObjectName("mediaContainer");
+    ui->horizontalLayout_2->addWidget(mediaContainer);
+    mediaContainer->setLayout(stack);
+    mediaContainer->setSizePolicy(policy);
+
+    imageHolder = new QLabel();
+    imageHolder->setObjectName("imageHolder");
+    imageHolder->setParent(mediaContainer);
+    mediaContainer->layout()->addWidget(imageHolder);
 
 }
 
@@ -23,44 +41,48 @@ MainWindow::~MainWindow()
 void MainWindow::onButtonClicked()
 {
 
-    qDebug() << sender()->parent()->objectName();
+    QString idNum = sender()->parent()->parent()->property("idNum").toString();
 
+    QString file = localInterface->locateFile(idNum);
+    if (file != nullptr) {
+
+        if (file.contains(".jp") || file.contains(".png")) {
+            QPixmap pixmap(file);
+
+            int w = imageHolder->width();
+            int h = imageHolder->height();
+
+            imageHolder->setPixmap(pixmap.scaled(w, h, Qt::KeepAspectRatio));
+        }
+    }
 }
 
 void MainWindow::populateScrollArea()
 {
 
-//    //Setup scrollArea
-//    QWidget* bigContainer = new QWidget(this);
-//    QVBoxLayout* vertical = new QVBoxLayout;
-//    bigContainer->setLayout(vertical);
-//    //scrollArea
+    //Setup scrollArea
+    QWidget* bigContainer = new QWidget(this);
+    QVBoxLayout* vertical = new QVBoxLayout;
+    vertical->setObjectName("delegateContainer");
+    bigContainer->setLayout(vertical);
+    //scrollArea
 
+    //Populate scrollArea
+    for (int i = 0; i < localInterface->savedList.length(); i++) {
 
-//    //Populate scrollArea
-//    for (int i = 0; i < redditInterface->savedList.length(); i++) {
+        QString type = localInterface->savedList.at(i)->type;
+        QString text = localInterface->savedList.at(i)->text;
+        QString url = localInterface->savedList.at(i)->url;
+        QString idNum = localInterface->savedList.at(i)->idNum;
 
-//        QString type = redditInterface->savedList.at(i)->type;
-//        QString text = redditInterface->savedList.at(i)->text;
-//        QString url = redditInterface->savedList.at(i)->url;
-//        QString idNum = redditInterface->savedList.at(i)->idNum;
+        QWidget* delegate = createDelegate(type, text, url, idNum);
+        delegateList.append(delegate);
 
-//        QWidget* delegate = createDelegate(type, text, url, idNum);
+        vertical->addWidget(delegate);
+        vertical->addStrut(5);
 
-//        vertical->addWidget(delegate);
-
-//    } //for
-
-//    //Generate "Load More" button at bottom of list
-//    QWidget* finalDelegate = new QWidget;
-//    QPushButton* loadMore = new QPushButton("loadMore");
-//    QHBoxLayout* horizontal = new QHBoxLayout;
-//    horizontal->addWidget(loadMore);
-//    finalDelegate->setLayout(horizontal);
-//    vertical->addWidget(finalDelegate);
-//    //Load More
-
-//    ui->scrollArea->setWidget(bigContainer);
+    }
+    ui->scrollArea->setWidget(bigContainer);
 
 }
 QWidget* MainWindow::createDelegate(QString type, QString text, QString url, QString idNum) {
@@ -71,12 +93,17 @@ QWidget* MainWindow::createDelegate(QString type, QString text, QString url, QSt
     delegate->setProperty("text", text);
     delegate->setProperty("url", url);
     delegate->setProperty("idNum", idNum);
+    delegate->setMaximumWidth(ui->scrollArea->width() - 50);
 
+
+    if (text.length() >= 40) { text.truncate(40); text += "..."; }
     QLabel* label = new QLabel(text);
     QLineEdit* tags = new QLineEdit(url);
 
-    QPushButton* button = new QPushButton(delegate);
+    QPushButton* button = new QPushButton();
     button->setText(type);
+    button->setMaximumWidth(100);
+    button->setParent(delegate);
 
 
     QVBoxLayout* vertical = new QVBoxLayout;
@@ -100,6 +127,9 @@ QWidget* MainWindow::createDelegate(QString type, QString text, QString url, QSt
 void MainWindow::on_actionBackup_Locally_triggered()
 {
 
+    localInterface->loadSavedList();
+    return;
+
     if (updateThread == nullptr) {
         this->updateThread = contr->start();
     }
@@ -111,3 +141,28 @@ void MainWindow::on_actionBackup_Locally_triggered()
     }
 
 }
+
+void MainWindow::searchScrollArea() {
+
+    QString search = ui->lineEdit->text();
+
+    for (int i = 0; i < delegateList.size(); i++) {
+
+        QWidget* delegate = delegateList.at(i);
+
+        QString type = delegate->property("type").toString();
+        QString text = delegate->property("text").toString();
+        QString url = delegate->property("url").toString();
+        QString idNum = delegate->property("idNum").toString();
+
+        if (!(type.contains(search) || text.contains(search) || url.contains(search) || idNum.contains(search))) {
+            delegate->hide();
+        }
+        else if (type.contains(search) || text.contains(search) || url.contains(search) || idNum.contains(search)) {
+            delegate->show();
+        }
+
+
+    }
+}
+
