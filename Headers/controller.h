@@ -4,7 +4,7 @@
 #include <QThread>
 #include <QNetworkAccessManager>
 
-#include "redditinterface.h"
+#include "RedditInterface.h"
 #include "localinterface.h"
 #include "contentretriever.h"
 #include "savedentry.h"
@@ -27,11 +27,10 @@ private:
     ContentRetriever* contentRetriever;
 
     QDir rootDir;
-    QString clientID;
     QNetworkAccessManager* manager;
-
     void compareLists();
     void retrieveContent(QList<SavedEntry*>);
+
 
 };
 

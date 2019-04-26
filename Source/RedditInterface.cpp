@@ -14,7 +14,6 @@ RedditInterface::RedditInterface()
     //These connects go around in a loop, requesting and waiting for each page of the users saved data (Each page contains max 100 posts)
     connect(manager, &QNetworkAccessManager::finished, this, &RedditInterface::retrieveJSONPage);
     connect(this, &RedditInterface::requestNext, this, &RedditInterface::requestJSONPage);
-    connect(this, &RedditInterface::processJSON, this, &RedditInterface::buildSavedList);
 
 }
 
@@ -24,7 +23,7 @@ void RedditInterface::sleep()
     QMutex mutex;
     mutex.lock();
     this->state = Asleep;
-    this->waitCondition->wait(&mutex, 60000);
+    this->waitCondition->wait(&mutex, 600000);
     this->state = Running;
     mutex.unlock();
     emit doneSleeping();
@@ -34,11 +33,11 @@ void RedditInterface::sleep()
 
 void RedditInterface::loadSavedList()
 {
-    qDebug() << "REQUESTING NEW SAVED LIST" << QThread::currentThread();
+    qDebug() << "<Requesting New Saved List>" << QThread::currentThread();
+    emit loadingSavedList();
 
     this->savedList.clear();
     this->jsonPages.clear();
-
     requestJSONPage("");
 }
 
@@ -74,7 +73,7 @@ void RedditInterface::retrieveJSONPage(QNetworkReply* reply)
         }
         else {
             qDebug() << QString::number(numPosts) << "posts recieved." << "end";
-            emit processJSON();
+            buildSavedList();
         }
     }
     else {

@@ -11,6 +11,10 @@
 #include <QLabel>
 #include <QStackedLayout>
 #include <QWidget>
+#include <QWebEngineView>
+#include <QVideoWidget>
+#include <QMediaPlayer>
+#include <QMediaPlaylist>
 
 namespace Ui {
 class MainWindow;
@@ -31,7 +35,13 @@ public:
     Controller* contr;
     QThread* updateThread;
 
+    QStackedLayout* stack;
+
     QLabel* imageHolder;
+    QWebEngineView* htmlHolder;
+    QVideoWidget* videoHolder;
+    QMediaPlaylist* videoPlaylist;
+    QMediaPlayer* videoPlayer;
 
     LocalInterface* localInterface;
 
@@ -43,6 +53,7 @@ private slots:
     void on_actionBackup_Locally_triggered();
     void populateScrollArea();
     void searchScrollArea();
+    void changeEvent(QEvent*);
 
 private:
 

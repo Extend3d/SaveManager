@@ -10,26 +10,51 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    setWindowTitle("Save Manager");
+
     this->contr = new Controller();
-    this->localInterface = contr->localInterface;
-    connect(localInterface, &LocalInterface::localSavedListReady, this, &MainWindow::populateScrollArea);
     this->updateThread = nullptr;
+    this->localInterface = contr->localInterface;
+    connect(contr->redditInterface, &RedditInterface::savedListReady, this, &MainWindow::populateScrollArea);
 
     connect(ui->lineEdit, &QLineEdit::returnPressed, this, &MainWindow::searchScrollArea);
 
-    QStackedLayout* stack = new QStackedLayout();
-    QSizePolicy policy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    ui->scrollArea->setFixedWidth(500);
+    ui->lineEdit->setFixedWidth(500);
+    ui->lineEdit->setPlaceholderText("Search...");
 
-    QWidget* mediaContainer = new QWidget();
+    //Widget that holds the stack of display widgets (below)
+    QWidget* mediaContainer = new QWidget(this);
     mediaContainer->setObjectName("mediaContainer");
     ui->horizontalLayout_2->addWidget(mediaContainer);
+    stack = new QStackedLayout();
     mediaContainer->setLayout(stack);
+    QSizePolicy policy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     mediaContainer->setSizePolicy(policy);
 
-    imageHolder = new QLabel();
-    imageHolder->setObjectName("imageHolder");
-    imageHolder->setParent(mediaContainer);
+    //Widget to display static images
+    imageHolder = new QLabel(mediaContainer);
+    imageHolder->setSizePolicy(policy);
     mediaContainer->layout()->addWidget(imageHolder);
+
+    //Widget to display webpage html
+    htmlHolder = new QWebEngineView(mediaContainer);
+    connect(htmlHolder, &QWebEngineView::loadFinished, this, [this](bool success) { if (success) stack->setCurrentWidget(htmlHolder); });
+    mediaContainer->layout()->addWidget(htmlHolder);
+
+    //Widget to display videos
+    videoHolder = new QVideoWidget(mediaContainer);
+    videoPlayer = new QMediaPlayer(mediaContainer);
+    videoPlayer->setVideoOutput(videoHolder);
+    //Simple connect to a lamda function to make sure the video plays on repeat, since apparently QMediaPlayer can't do that itself
+    connect(videoPlayer, &QMediaPlayer::stateChanged, this, [this](QMediaPlayer::State state) {
+        if (state == QMediaPlayer::StoppedState)
+        {
+           videoPlayer->setPosition(0);
+           videoPlayer->play();
+        }
+    });
+    mediaContainer->layout()->addWidget(videoHolder);
 
 }
 
@@ -44,27 +69,71 @@ void MainWindow::onButtonClicked()
     QString idNum = sender()->parent()->parent()->property("idNum").toString();
 
     QString file = localInterface->locateFile(idNum);
+    qDebug() << file;
     if (file != nullptr) {
 
-        if (file.contains(".jp") || file.contains(".png")) {
-            QPixmap pixmap(file);
+        if (file.contains(".jpeg") || file.contains(".png")) {
 
+            QPixmap pixmap(file);
             int w = imageHolder->width();
             int h = imageHolder->height();
-
             imageHolder->setPixmap(pixmap.scaled(w, h, Qt::KeepAspectRatio));
+            stack->setCurrentWidget(imageHolder);
+
+        }
+        else if (file.contains("html")) {
+
+            //TODO fix html render issues
+            QFile f(file);
+            if (!f.open(QIODevice::ReadOnly)) {return;};
+            QByteArray bytes = f.readAll();
+            QString html = QString::fromUtf8(bytes, bytes.size());
+            if (!(htmlHolder->property("idNum").toString() == idNum))
+            {
+                htmlHolder->setHtml(html);
+                htmlHolder->setProperty("idNum", idNum);
+            }
+            //htmlHolder is set as current widget via the lambda function in the connnect statement above
+
+        }
+        else if (file.contains(".mp4"))
+        {
+
+                videoPlayer->setMedia(QUrl::fromLocalFile(file));
+                videoPlayer->play();
+                stack->setCurrentWidget(videoHolder);
         }
     }
+}
+
+void MainWindow::changeEvent(QEvent* e) {
+
+    QMainWindow::changeEvent(e);
+//    if (e->type() == QEvent::WindowStateChange && windowState() & Qt::WindowMinimized)
+//        QMetaObject::invokeMethod(this, "hide", Qt::QueuedConnection);
+
+
 }
 
 void MainWindow::populateScrollArea()
 {
 
+    if (delegateList.length() > 0) {
+
+        assert(this->findChild<QWidget*>("scrollAreaContainer") != nullptr);
+        delete this->findChild<QWidget*>("scrollAreaContainer");
+
+    }
+
     //Setup scrollArea
-    QWidget* bigContainer = new QWidget(this);
+    QWidget* scrollAreaContainer = new QWidget(ui->scrollArea);
+    scrollAreaContainer->setObjectName("scrollAreaContainer");
+    //scrollAreaContainer->setMinimumSize(ui->scrollArea->size());
+    QSizePolicy policy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+    scrollAreaContainer->setSizePolicy(policy);
     QVBoxLayout* vertical = new QVBoxLayout;
     vertical->setObjectName("delegateContainer");
-    bigContainer->setLayout(vertical);
+    scrollAreaContainer->setLayout(vertical);
     //scrollArea
 
     //Populate scrollArea
@@ -82,31 +151,33 @@ void MainWindow::populateScrollArea()
         vertical->addStrut(5);
 
     }
-    ui->scrollArea->setWidget(bigContainer);
+    ui->scrollArea->setWidget(scrollAreaContainer);
+    ui->scrollArea->update();
+
 
 }
 QWidget* MainWindow::createDelegate(QString type, QString text, QString url, QString idNum) {
 
     QWidget* delegate = new QWidget;
+    delegate->setMaximumWidth(500);
+    QSizePolicy policy1(QSizePolicy::MinimumExpanding, QSizePolicy::Minimum);
+    delegate->setSizePolicy(policy1);
     delegate->setObjectName("Delegate " + idNum);
     delegate->setProperty("type", type);
     delegate->setProperty("text", text);
     delegate->setProperty("url", url);
     delegate->setProperty("idNum", idNum);
-    delegate->setMaximumWidth(ui->scrollArea->width() - 50);
 
-
-    if (text.length() >= 40) { text.truncate(40); text += "..."; }
+    if (text.length() >= 45) { text.truncate(45); text += "..."; }
     QLabel* label = new QLabel(text);
-    QLineEdit* tags = new QLineEdit(url);
+    QSizePolicy policy2(QSizePolicy::Minimum, QSizePolicy::Minimum);
+    label->setSizePolicy(policy2);
 
     QPushButton* button = new QPushButton();
-    button->setText(type);
-    button->setMaximumWidth(100);
+    button->setFixedWidth(100);
+    button->setText(idNum);
     button->setParent(delegate);
-
-
-    QVBoxLayout* vertical = new QVBoxLayout;
+    connect(button, &QPushButton::pressed, this,  &MainWindow::onButtonClicked);
 
     QWidget* container = new QWidget;
     QHBoxLayout* horizontal = new QHBoxLayout;
@@ -114,21 +185,23 @@ QWidget* MainWindow::createDelegate(QString type, QString text, QString url, QSt
     horizontal->addWidget(label);
     container->setLayout(horizontal);
 
+    QLineEdit* tags = new QLineEdit(url);
+    QSizePolicy policy3(QSizePolicy::MinimumExpanding, QSizePolicy::Minimum);
+    tags->setCursorPosition(0);
+    tags->setSizePolicy(policy3);
+    tags->setMaximumWidth(450);
+
+    QVBoxLayout* vertical = new QVBoxLayout;
     vertical->addWidget(container);
     vertical->addWidget(tags);
 
     delegate->setLayout(vertical);
-
-    connect(button, &QPushButton::pressed, this,  &MainWindow::onButtonClicked);
 
     return delegate;
 }
 
 void MainWindow::on_actionBackup_Locally_triggered()
 {
-
-    localInterface->loadSavedList();
-    return;
 
     if (updateThread == nullptr) {
         this->updateThread = contr->start();

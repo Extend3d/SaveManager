@@ -1,16 +1,18 @@
 #include "Headers/contentretriever.h"
 
+#include <QScreen>
+
 ContentRetriever::ContentRetriever(QNetworkAccessManager* manager, QDir rootDir)
 {
 
+    this->clientID = "Client-ID 8df2e1247517bc4"; //Imgur client ID
+
     this->manager = manager;
+    connect(manager, &QNetworkAccessManager::finished, this, &ContentRetriever::processResponse);
+
 
     rootDir.cd("media");
     this->mediaDir = rootDir;
-
-    this->clientID = "Client-ID 8df2e1247517bc4"; //Imgur client ID
-    this->numRequests = 0;
-    connect(manager, &QNetworkAccessManager::finished, this, &ContentRetriever::processResponse);
 
 }
 
@@ -26,9 +28,9 @@ void ContentRetriever::retrieve(SavedEntry* entry) {
         if (url.contains("i.redd.it")) {
             download(url, idNum);
         }
-        else if (url.contains("v.redd.it")) {
-            download(url, idNum);
-        }
+//        else if (url.contains("v.redd.it")) {
+//            download(url, idNum);
+//        }
         else if (url.contains("imgur")) {
 
             QString imgurID = url.split("/").last();
@@ -67,10 +69,13 @@ void ContentRetriever::retrieve(SavedEntry* entry) {
         else if (url.contains(".png")) {
             download(url, idNum);
         } else {
+
             download(url, idNum);
+
         }
 
-    } else if (type == "t1") {
+    }
+    else if (type == "t1") {
 
         download(url, idNum);
 
@@ -83,7 +88,7 @@ void ContentRetriever::download(QString url, QString idNum) {
     QNetworkRequest request = QNetworkRequest(QUrl(url));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
 
-    //This download method handles all downloads, even requests to APIs, though only the imgur api requires any special additions
+    //Imgur api is the only download request that needs any additional headers
     if (url.contains("api.imgur.com/3/")) {
         request.setRawHeader("Authorization", clientID.toUtf8());
     }

@@ -10,24 +10,20 @@ Controller::Controller()
 
     this->redditInterface = new RedditInterface();
     this->localInterface = new LocalInterface(rootDir);
+    connect(redditInterface, &RedditInterface::loadingSavedList, localInterface, &LocalInterface::loadSavedList);
 
     this->manager = new QNetworkAccessManager();
     this->contentRetriever = new ContentRetriever(manager, rootDir);
-
-    this->clientID = "Client-ID 8df2e1247517bc4";
-
 
 }
 
 QThread* Controller::start()
 {
-    //Load the list of posts that are already saved locally
-    localInterface->loadSavedList();
+    qDebug() << "Controller Thread: " << QThread::currentThread();
 
     //Create new thread and move the redditInterface object to that thread
     QThread* t1 = new QThread();
     redditInterface->moveToThread(t1);
-    qDebug() << "Controller Thread: " << QThread::currentThread();
 
     //Connect the QThread::started signal to the starting point of the redditInterface so things are set in motion
     //when t1->start() is called
@@ -100,7 +96,6 @@ void Controller::retrieveContent(QList<SavedEntry*> content)
         contentRetriever->retrieve(content.at(i));
 
     }
-
 }
 
 

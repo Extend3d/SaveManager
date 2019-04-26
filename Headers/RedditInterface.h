@@ -43,8 +43,8 @@ private slots:
 signals:
 
     void requestNext(QString);
-    void processJSON();
 
+    void loadingSavedList();
     void savedListReady();
 
     void finished();

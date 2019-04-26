@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui network
+QT       += core gui network webenginewidgets multimediawidgets
 
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
@@ -44,6 +44,12 @@ HEADERS += \
 
 FORMS += \
         mainwindow.ui
+
+
+RESOURCES += \
+    resources.qrc
+
+RC_ICONS = icon.ico
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

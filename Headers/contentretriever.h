@@ -11,17 +11,18 @@ class ContentRetriever : public QObject
 
 public:
 
-    ContentRetriever(QNetworkAccessManager*, QDir);
+    ContentRetriever(QNetworkAccessManager* manager, QDir rootDir);
 
     QDir mediaDir;
     QString clientID;
+
     QNetworkAccessManager* manager;
 
     void retrieve(SavedEntry*);
     void download(QString url, QString idNum);
+
     void processResponse(QNetworkReply*);
 
-    int numRequests;
 
 };
 
